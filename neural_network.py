@@ -14,17 +14,11 @@ class ActivationFunction:
 class Sigmoid(ActivationFunction):
     @staticmethod
     def forward(x):
-        if type(x) == float or type(x) == int or type(x) == np.float64:
-            return 1/(1+math.exp(-x))
-
-        return np.array(list(map(lambda element: Sigmoid.forward(element), x)))
+        return 1/(1+np.exp(-x))
 
     @staticmethod
     def derivative(x):
-        if type(x) == float or type(x) == int or type(x) == np.float64:
-            return Sigmoid.forward(x)*(1-Sigmoid.forward(x))
-
-        return np.array(list(map(lambda element: Sigmoid.derivative(element), x)))
+        return Sigmoid.forward(x)*(1-Sigmoid.forward(x))
 
 class ReLU(ActivationFunction):
     @staticmethod
@@ -44,32 +38,20 @@ class ReLU(ActivationFunction):
 class Linear(ActivationFunction):
     @staticmethod
     def forward(x):
-        if type(x) == float or type(x) == int or type(x) == np.float64:
-            return x
-
-        return np.array(list(map(lambda element: Linear.forward(element), x)))
+        return x
 
     @staticmethod
     def derivative(x):
-        if type(x) == float or type(x) == int or type(x) == np.float64:
-            return 1
-
-        return np.array(list(map(lambda element: Linear.derivative(element), x)))
+        return np.ones(np.shape(x))
 
 class Tanh(ActivationFunction):
     @staticmethod
     def forward(x):
-        if type(x) == float or type(x) == int or type(x) == np.float64:
-            return math.tanh(x)
-
-        return np.array(list(map(lambda element: Tanh.forward(element), x)))
+        return np.tanh(x)
 
     @staticmethod
     def derivative(x):
-        if type(x) == float or type(x) == int or type(x) == np.float64:
-            return 1 - Tanh.forward(x)**2
-
-        return np.array(list(map(lambda element: Tanh.derivative(element), x)))
+        return 1 - Tanh.forward(x)**2
 
 
 class CostFunction:
@@ -163,15 +145,16 @@ class NeuralNetwork:
             # backward pass
             delta = self.cost_function.derivative(activations[-1], useful_y)*self.layers[-1].activation_function.derivative(zs[-1])
             self.layers[-1].update_biases += delta
-            self.layers[-1].update_weights += np.atleast_2d(delta).T@np.atleast_2d(activations[-2])
+            
+            # self.layers[-1].update_weights += np.atleast_2d(delta).T@np.atleast_2d(activations[-2])
+            self.layers[-1].update_weights += zs[-1].T@delta
 
             for layer in range(2, len(self.layers)):
-                z = zs[-layer]
-                a_derivative = self.layers[-layer].activation_function.derivative(z)
+                a_derivative = self.layers[-layer].activation_function.derivative(zs[-layer])
                 delta = (self.layers[-layer+1].weights.T@delta)*a_derivative
-                self.layers[-layer].update_biases += delta
+                self.layers[-layer].update_biases += delta.reshape((self.layers[-layer].neuron_count,))
                 self.layers[-layer].update_weights += np.atleast_2d(delta).T@np.atleast_2d(activations[-layer-1])
-        
+
         for layer in self.layers[1:]:  # updateing weights and biases
             layer.update_values(learning_rate)
 
@@ -183,7 +166,7 @@ class NeuralNetwork:
 
     def train(self, x: np.ndarray, y: np.ndarray, batch_size: int=None, learning_rate: float=0.03, epoch_count: int=100) -> None:
         if batch_size is None:
-            batch_size = len(x)//epoch_count
+            batch_size = len(x)//4
         
         datasets = np.array(list(zip(x, y)), dtype=object)
 
@@ -204,10 +187,10 @@ class NeuralNetwork:
 if __name__ == "__main__":
     neural_network = NeuralNetwork([
         InputLayer(784),
-        DenseLayer(16, (784,), ReLU),
-        DenseLayer(16, (16,), Sigmoid),
-        DenseLayer(16, (16,), Tanh),
-        DenseLayer(10, (16,), Sigmoid),
+        DenseLayer(500, (784,), ReLU),
+        DenseLayer(50, (500,), ReLU),
+        DenseLayer(20, (50,), Tanh),
+        DenseLayer(10, (20,), Sigmoid),
     ], MeanSquaredError)
 
 
@@ -222,8 +205,11 @@ if __name__ == "__main__":
     test_labels = mndata.process_images_to_numpy(test_labels)
     
     prediction = neural_network.predict(np.array(train_images[0]))
-    
-    neural_network.train(train_images, train_labels, batch_size=500)
+
+    neural_network.train(train_images, train_labels, batch_size=1000, epoch_count=20)
 
     for image, label in zip(test_images[:30], test_labels[:30]):
-        print(np.argmax(neural_network.predict(image)), label)
+        print((neural_network.predict(image)), label)
+    
+    # for layer in neural_network.layers[1:]:
+    #     print(layer.weights, layer.biases)
