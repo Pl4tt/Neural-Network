@@ -77,18 +77,18 @@ class Layer:
         self.input_shape = input_shape
         self.activation_function = activation_function
 
-        # self.weights = np.random.rand(self.neuron_count, *self.input_shape)
-        # self.biases = np.random.rand(self.neuron_count)
-        self.weights = np.random.uniform(0, 0.0001, size=(self.neuron_count, *self.input_shape))
-        self.biases = np.random.uniform(0, 0.0001, size=(self.neuron_count,))
+        self.weights = np.random.rand(self.neuron_count, *self.input_shape)
+        self.biases = np.random.rand(self.neuron_count)
+        # self.weights = np.random.uniform(0, 0.001, size=(self.neuron_count, *self.input_shape))
+        # self.biases = np.random.uniform(0, 0.001, size=(self.neuron_count,))
         
         # print("W", self.weights)
         # print("B", self.biases)
         self.set_update_arrays()
     
     def set_update_arrays(self) -> None:
-        self.update_weights = np.zeros((self.neuron_count, *self.input_shape))
-        self.update_biases = np.zeros((self.neuron_count,))
+        self.update_weights = np.zeros((self.neuron_count, *self.input_shape), dtype=np.float64)
+        self.update_biases = np.zeros((self.neuron_count,), dtype=np.float64)
 
     def forward(self, input_arr: np.ndarray, mode: int=1) -> np.ndarray:
         if self.input_shape != np.shape(input_arr):
@@ -133,8 +133,10 @@ class NeuralNetwork:
 
     def train_batch_sgd(self, mini_batch: np.ndarray, learning_rate: float) -> None:
         for x, y in mini_batch:  # backpropagation / sgd
-            useful_y = np.zeros((10,))
-            useful_y[y-1] = 1
+            # useful_y = np.zeros((10,))
+            # useful_y[y-1] = 1
+            useful_y = np.array(y, dtype=np.float64)
+            x = np.array(x, dtype=np.float64)
 
             activation = x
             activations = [x]
@@ -150,7 +152,7 @@ class NeuralNetwork:
             # print("zs", zs[-1])
             # print("D", self.cost_function.derivative(activations[-1], useful_y), self.layers[-1].activation_function.derivative(zs[-1]))
             delta = self.cost_function.derivative(activations[-1], useful_y)*self.layers[-1].activation_function.derivative(zs[-1])
-            # print("B", delta, "W", np.atleast_2d(delta).T@np.atleast_2d(activations[-2]))
+            # print("B", delta.dtype, "W", np.atleast_2d(delta).T@np.atleast_2d(activations[-2]), self.layers[-1].update_biases.dtype)
             self.layers[-1].update_biases += delta
             self.layers[-1].update_weights += np.atleast_2d(delta).T@np.atleast_2d(activations[-2])
 
@@ -164,6 +166,7 @@ class NeuralNetwork:
                 self.layers[-layer].update_weights += np.atleast_2d(delta).T@np.atleast_2d(activations[-layer-1])
 
         for layer in self.layers[1:]:  # updateing weights and biases
+            # print("B", layer.update_biases)
             layer.update_biases /= len(mini_batch)
             layer.update_weights /= len(mini_batch)
             layer.update_values(learning_rate)
@@ -174,7 +177,7 @@ class NeuralNetwork:
 
         self.train_batch_sgd(mini_batch, learning_rate)
 
-    def train(self, x: np.ndarray, y: np.ndarray, test: tuple[np.ndarray], batch_size: int=None, learning_rate: float=0.03, epoch_count: int=100) -> None:
+    def train(self, x: np.ndarray, y: np.ndarray, test: tuple[np.ndarray], batch_size: int=None, learning_rate: float=0.000000002, epoch_count: int=100) -> None:
         if batch_size is None:
             batch_size = len(x)//4
         
@@ -184,11 +187,11 @@ class NeuralNetwork:
             self.train_epoch(datasets, batch_size, learning_rate)
 
             print(f"Epoch {i+1} finished")
-            # print(self.predict(test[0]), test[1])
+            print(self.predict(test[0]), test[1])
     
     def predict(self, x: np.ndarray) -> np.ndarray:
         result = x
-        # print(x)
+        print(x)
         for layer in self.layers:
             result = layer.forward(result)
             # print(result)
@@ -197,33 +200,81 @@ class NeuralNetwork:
 
 
 if __name__ == "__main__":
-    neural_network = NeuralNetwork([
-        InputLayer(784),
-        DenseLayer(500, (784,), ReLU),
-        DenseLayer(200, (500,), Sigmoid),
-        DenseLayer(100, (200,), Linear),
-        DenseLayer(10, (100,), Sigmoid),
-    ], MeanSquaredError)
+    # neural_network = NeuralNetwork([
+    #     InputLayer(784),
+    #     DenseLayer(500, (784,), ReLU),
+    #     DenseLayer(200, (500,), Sigmoid),
+    #     DenseLayer(100, (200,), Linear),
+    #     DenseLayer(10, (100,), Sigmoid),
+    # ], MeanSquaredError)
 
 
-    mndata = MNIST("digit_data")
+    # mndata = MNIST("digit_data")
 
-    train_images, train_labels = mndata.load_training()
-    test_images, test_labels = mndata.load_testing()
+    # train_images, train_labels = mndata.load_training()
+    # test_images, test_labels = mndata.load_testing()
 
-    train_images = mndata.process_images_to_numpy(train_images)
-    train_labels = mndata.process_images_to_numpy(train_labels)
-    test_images = mndata.process_images_to_numpy(test_images)
-    test_labels = mndata.process_images_to_numpy(test_labels)
+    # train_images = mndata.process_images_to_numpy(train_images)
+    # train_labels = mndata.process_images_to_numpy(train_labels)
+    # test_images = mndata.process_images_to_numpy(test_images)
+    # test_labels = mndata.process_images_to_numpy(test_labels)
     
-    prediction = neural_network.predict(np.array(train_images[0]))
+    # train_images = train_images.astype(np.float64)
+    # test_images = test_images.astype(np.float64)
+    
+    # train_images /= 1000
+    # test_images /= 1000
+    
+    
+    # prediction = neural_network.predict(np.array(train_images[0]))
 
-    neural_network.train(train_images, train_labels, (test_images[0], test_labels[0]), batch_size=1000, epoch_count=40)
-    # neural_network.predict(test_images[1])
-    # print(test_labels[1])
-    for image, label in zip(test_images[:10], test_labels[:10]):
-        prediction = neural_network.predict(image)
-        print(prediction, np.argmax(prediction), label)
+    # neural_network.train(train_images, train_labels, (test_images[0], test_labels[0]), batch_size=1000, epoch_count=20)
+    # # neural_network.predict(test_images[1])
+    # # print(test_labels[1])
+    # for image, label in zip(test_images[:10], test_labels[:10]):
+    #     prediction = neural_network.predict(image)
+    #     print(prediction, np.argmax(prediction), label)
     
     # for layer in neural_network.layers[1:]:
     #     print(layer.weights, layer.biases)
+
+
+
+    # network = NeuralNetwork([
+    #     InputLayer(2),
+    #     DenseLayer(3, (2,), Linear),
+    #     DenseLayer(2, (3,), Linear),
+    # ])
+
+    # train_input = np.array([np.array([x, y], dtype=np.float64) for x, y in zip(range(-30000, 10000), range(-30000, 10000)[::-1])], dtype=np.float64)
+    # train_output = np.array([np.array([x, y], dtype=np.float64) for x, y in zip(range(-30000, 10000)[::-1], range(-30000, 10000))], dtype=np.float64)
+    # test_input = np.array([np.array([x, y], dtype=np.float64) for x, y in zip(range(-40000, -30000), range(-40000, -30000)[::-1])], dtype=np.float64)
+    # test_output = np.array([np.array([x, y], dtype=np.float64) for x, y in zip(range(-40000, -30000)[::-1], range(-40000, -30000))], dtype=np.float64)
+    
+    # network.train(train_input, train_output, (test_input[0], test_output[0]))
+    # # print(network.layers[1].biases)
+    # # print(network.layers[1].weights)
+    # # print(network.layers[2].biases)
+    # # print(network.layers[2].weights)
+    # print(network.predict(test_input[1]), test_output[1])
+    # print(network.predict(test_input[30]), test_output[30])
+
+
+
+    network = NeuralNetwork([
+        InputLayer(1),
+        DenseLayer(1, (1,), Linear)
+    ])
+
+    train_input = np.array([np.array([x], dtype=np.float64) for x in range(-30000, 10000)], dtype=np.float64)
+    train_output = np.array([np.array([-x], dtype=np.float64) for x in range(-30000, 10000)], dtype=np.float64)
+    test_input = np.array([np.array([x], dtype=np.float64) for x in range(-40000, -30000)], dtype=np.float64)
+    test_output = np.array([np.array([-x], dtype=np.float64) for x in range(-40000, -30000)], dtype=np.float64)
+
+    network.train(train_input, train_output, (test_input[0], test_output[0]))
+    print(network.layers[1].biases)
+    print(network.layers[1].weights)
+
+    for tinput, toutput in zip(test_input[1:10], test_output[1:10]):
+        print(network.predict(tinput), toutput)
+
