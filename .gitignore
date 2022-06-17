@@ -3,3 +3,4 @@ digit_data/*
 *.docx
 *.tmp
 mnist_tensorflow.py
+__pycache__
